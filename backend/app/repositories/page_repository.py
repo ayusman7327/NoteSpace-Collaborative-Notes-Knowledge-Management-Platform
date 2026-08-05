@@ -1,3 +1,6 @@
+from datetime import datetime
+
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.models.page import Page
@@ -36,6 +39,17 @@ def get_page_by_id(
             Page.id == page_id,
             Page.is_deleted.is_(False)
         )
+        .first()
+    )
+
+
+def get_page_by_id_including_deleted(
+    db: Session,
+    page_id: int
+) -> Page | None:
+    return (
+        db.query(Page)
+        .filter(Page.id == page_id)
         .first()
     )
 
@@ -88,3 +102,66 @@ def update_page(
     db.refresh(page)
 
     return page
+
+
+def soft_delete_page(
+    db: Session,
+    page: Page
+) -> Page:
+    page.is_deleted = True
+    page.deleted_at = datetime.utcnow()
+
+    db.commit()
+    db.refresh(page)
+
+    return page
+
+
+def restore_page(
+    db: Session,
+    page: Page
+) -> Page:
+    page.is_deleted = False
+    page.deleted_at = None
+
+    db.commit()
+    db.refresh(page)
+
+    return page
+
+
+def get_deleted_pages(
+    db: Session,
+    workspace_id: int
+) -> list[Page]:
+    return (
+        db.query(Page)
+        .filter(
+            Page.workspace_id == workspace_id,
+            Page.is_deleted.is_(True)
+        )
+        .order_by(Page.deleted_at.desc())
+        .all()
+    )
+
+
+def search_pages(
+    db: Session,
+    workspace_id: int,
+    query: str
+) -> list[Page]:
+    search_term = f"%{query}%"
+
+    return (
+        db.query(Page)
+        .filter(
+            Page.workspace_id == workspace_id,
+            Page.is_deleted.is_(False),
+            or_(
+                Page.title.ilike(search_term),
+                Page.content.ilike(search_term)
+            )
+        )
+        .order_by(Page.updated_at.desc())
+        .all()
+    )

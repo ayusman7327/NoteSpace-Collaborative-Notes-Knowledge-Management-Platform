@@ -2,11 +2,17 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.models.workspace import WorkspaceMember, WorkspaceRole
+from app.repositories.activity_log_repository import create_activity_log
 from app.repositories.page_repository import (
     create_page,
     get_child_pages,
+    get_deleted_pages,
     get_page_by_id,
+    get_page_by_id_including_deleted,
     get_workspace_pages,
+    restore_page,
+    search_pages,
+    soft_delete_page,
     update_page
 )
 from app.repositories.page_version_repository import (
@@ -49,7 +55,7 @@ def check_edit_permission(
     ]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You do not have permission to edit pages"
+            detail="You do not have permission to modify pages"
         )
 
 
@@ -81,7 +87,7 @@ def create_new_page(
                 detail="Parent page not found in this workspace"
             )
 
-    return create_page(
+    page = create_page(
         db=db,
         workspace_id=page_data.workspace_id,
         parent_page_id=page_data.parent_page_id,
@@ -89,6 +95,16 @@ def create_new_page(
         content=page_data.content,
         created_by=user_id
     )
+
+    create_activity_log(
+        db=db,
+        workspace_id=page.workspace_id,
+        page_id=page.id,
+        user_id=user_id,
+        action="created_page"
+    )
+
+    return page
 
 
 def list_workspace_pages(
@@ -204,12 +220,22 @@ def update_existing_page(
         else None
     )
 
-    return update_page(
+    updated_page = update_page(
         db=db,
         page=page,
         title=title,
         content=page_data.content
     )
+
+    create_activity_log(
+        db=db,
+        workspace_id=page.workspace_id,
+        page_id=page.id,
+        user_id=user_id,
+        action="updated_page"
+    )
+
+    return updated_page
 
 
 def list_page_versions(
@@ -283,9 +309,149 @@ def restore_page_version(
         edited_by=user_id
     )
 
-    return update_page(
+    restored_page = update_page(
         db=db,
         page=page,
         title=None,
         content=version.content_snapshot
+    )
+
+    create_activity_log(
+        db=db,
+        workspace_id=page.workspace_id,
+        page_id=page.id,
+        user_id=user_id,
+        action="restored_page_version"
+    )
+
+    return restored_page
+
+
+def delete_page(
+    db: Session,
+    page_id: int,
+    user_id: int
+):
+    page = get_page_by_id(
+        db=db,
+        page_id=page_id
+    )
+
+    if page is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Page not found"
+        )
+
+    membership = check_workspace_membership(
+        db=db,
+        workspace_id=page.workspace_id,
+        user_id=user_id
+    )
+
+    check_edit_permission(membership)
+
+    deleted_page = soft_delete_page(
+        db=db,
+        page=page
+    )
+
+    create_activity_log(
+        db=db,
+        workspace_id=page.workspace_id,
+        page_id=page.id,
+        user_id=user_id,
+        action="deleted_page"
+    )
+
+    return deleted_page
+
+
+def restore_deleted_page(
+    db: Session,
+    page_id: int,
+    user_id: int
+):
+    page = get_page_by_id_including_deleted(
+        db=db,
+        page_id=page_id
+    )
+
+    if page is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Page not found"
+        )
+
+    if not page.is_deleted:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Page is not in trash"
+        )
+
+    membership = check_workspace_membership(
+        db=db,
+        workspace_id=page.workspace_id,
+        user_id=user_id
+    )
+
+    check_edit_permission(membership)
+
+    restored_page = restore_page(
+        db=db,
+        page=page
+    )
+
+    create_activity_log(
+        db=db,
+        workspace_id=page.workspace_id,
+        page_id=page.id,
+        user_id=user_id,
+        action="restored_page"
+    )
+
+    return restored_page
+
+
+def list_deleted_pages(
+    db: Session,
+    workspace_id: int,
+    user_id: int
+):
+    check_workspace_membership(
+        db=db,
+        workspace_id=workspace_id,
+        user_id=user_id
+    )
+
+    return get_deleted_pages(
+        db=db,
+        workspace_id=workspace_id
+    )
+
+
+def search_workspace_pages(
+    db: Session,
+    workspace_id: int,
+    query: str,
+    user_id: int
+):
+    check_workspace_membership(
+        db=db,
+        workspace_id=workspace_id,
+        user_id=user_id
+    )
+
+    cleaned_query = query.strip()
+
+    if not cleaned_query:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Search query cannot be empty"
+        )
+
+    return search_pages(
+        db=db,
+        workspace_id=workspace_id,
+        query=cleaned_query
     )

@@ -1,33 +1,88 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.database import Base
+from app.models.tag import page_tags
 
 
-class PageCreate(BaseModel):
-    workspace_id: int
-    parent_page_id: int | None = None
-    title: str = Field(min_length=1, max_length=200)
-    content: str = ""
+class Page(Base):
+    __tablename__ = "pages"
 
-
-class PageUpdate(BaseModel):
-    title: str | None = Field(
-        default=None,
-        min_length=1,
-        max_length=200
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        index=True
     )
-    content: str | None = None
 
+    workspace_id: Mapped[int] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
 
-class PageResponse(BaseModel):
-    id: int
-    workspace_id: int
-    parent_page_id: int | None
-    title: str
-    content: str
-    created_by: int
-    created_at: datetime
-    updated_at: datetime
-    is_deleted: bool
+    parent_page_id: Mapped[int | None] = mapped_column(
+        ForeignKey("pages.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True
+    )
 
-    model_config = ConfigDict(from_attributes=True)
+    title: Mapped[str] = mapped_column(
+        String(200),
+        nullable=False
+    )
+
+    content: Mapped[str] = mapped_column(
+        Text,
+        default="",
+        nullable=False
+    )
+
+    created_by: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        nullable=False
+    )
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+    is_deleted: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False
+    )
+
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True
+    )
+
+    parent = relationship(
+        "Page",
+        remote_side=[id],
+        back_populates="children"
+    )
+
+    children = relationship(
+        "Page",
+        back_populates="parent",
+        cascade="all, delete-orphan"
+    )
+
+    tags = relationship(
+        "Tag",
+        secondary=page_tags,
+        back_populates="pages"
+    )
