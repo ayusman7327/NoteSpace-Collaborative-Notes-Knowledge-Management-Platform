@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import { createWorkspace, getWorkspaces } from "../api/workspaces";
@@ -7,6 +8,7 @@ import "./Dashboard.css";
 
 function Dashboard() {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   const [workspaces, setWorkspaces] = useState([]);
   const [workspaceName, setWorkspaceName] = useState("");
@@ -51,12 +53,17 @@ function Dashboard() {
       ]);
 
       setWorkspaceName("");
+
       toast.success("Workspace created");
     } catch (error) {
       toast.error(error.response?.data?.detail || "Unable to create workspace");
     } finally {
       setCreating(false);
     }
+  };
+
+  const handleOpenWorkspace = (workspaceId) => {
+    navigate(`/workspace/${workspaceId}`);
   };
 
   return (
@@ -83,7 +90,9 @@ function Dashboard() {
         <section className="dashboard-intro">
           <div>
             <p className="dashboard-label">Your workspaces</p>
+
             <h2>Organize your notes and shared knowledge</h2>
+
             <p>
               Create a workspace for projects, teams, study notes, or personal
               documentation.
@@ -128,6 +137,7 @@ function Dashboard() {
                   type="button"
                   className="workspace-card"
                   key={workspace.id}
+                  onClick={() => handleOpenWorkspace(workspace.id)}
                 >
                   <div className="workspace-icon">
                     {workspace.name.charAt(0).toUpperCase()}
