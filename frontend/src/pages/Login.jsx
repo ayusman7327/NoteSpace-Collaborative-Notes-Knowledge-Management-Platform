@@ -23,8 +23,8 @@ function Login() {
   const handleChange = (event) => {
     const { name, value } = event.target;
 
-    setFormData((previousData) => ({
-      ...previousData,
+    setFormData((previous) => ({
+      ...previous,
       [name]: value,
     }));
   };
@@ -36,71 +36,139 @@ function Login() {
     try {
       await login(formData.email, formData.password);
 
-      toast.success("Login successful");
+      toast.success("Welcome back");
       navigate("/dashboard");
     } catch (error) {
-      toast.error(error.response?.data?.detail || "Unable to log in");
+      toast.error(error.response?.data?.detail || "Invalid email or password");
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="auth-page">
-      <div className="auth-brand">
-        <h1>NoteSpace</h1>
+    <div className="auth-shell">
+      <section className="auth-showcase">
+        <div className="brand-mark">N</div>
 
-        <p>
-          Organize notes, manage knowledge, and collaborate through shared
-          workspaces.
-        </p>
-      </div>
+        <div className="showcase-content">
+          <span className="showcase-badge">Knowledge, organized</span>
 
-      <div className="auth-card">
-        <div className="auth-heading">
-          <h2>Welcome back</h2>
-          <p>Log in to continue to your workspace.</p>
+          <h1>
+            Your ideas deserve
+            <br />a better workspace.
+          </h1>
+
+          <p>
+            Capture notes, structure knowledge, manage projects, and collaborate
+            with your team — all in one focused workspace.
+          </p>
+
+          <div className="showcase-points">
+            <div>
+              <span>01</span>
+              <p>Organize work with nested pages</p>
+            </div>
+
+            <div>
+              <span>02</span>
+              <p>Collaborate across shared workspaces</p>
+            </div>
+
+            <div>
+              <span>03</span>
+              <p>Search, tag, restore, and track changes</p>
+            </div>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="auth-form">
-          <div className="form-group">
-            <label htmlFor="email">Email address</label>
+        <div className="showcase-footer">
+          <span>NoteSpace</span>
+          <span>Collaborative Knowledge Platform</span>
+        </div>
+      </section>
 
-            <input
-              id="email"
-              name="email"
-              type="email"
-              placeholder="you@example.com"
-              value={formData.email}
-              onChange={handleChange}
-              required
-            />
+      <section className="auth-form-section">
+        <div className="auth-card">
+          <div className="mobile-brand">
+            <div className="brand-mark small">N</div>
+            <span>NoteSpace</span>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-
-            <input
-              id="password"
-              name="password"
-              type="password"
-              placeholder="Enter your password"
-              value={formData.password}
-              onChange={handleChange}
-              minLength={8}
-              required
-            />
+          <div className="auth-header">
+            <span className="eyebrow">Welcome back</span>
+            <h2>Sign in to NoteSpace</h2>
+            <p>Access your workspaces and continue where you left off.</p>
           </div>
 
-          <button type="submit" className="auth-button" disabled={submitting}>
-            {submitting ? "Logging in..." : "Log in"}
-          </button>
-        </form>
+          <form className="auth-form" onSubmit={handleSubmit}>
+            <div className="form-group">
+              <label htmlFor="email">Email address</label>
 
-        <p className="auth-footer">
-          Don&apos;t have an account? <Link to="/register">Create one</Link>
-        </p>
-      </div>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="name@example.com"
+                value={formData.email}
+                onChange={handleChange}
+                autoComplete="email"
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <div className="password-label-row">
+                <label htmlFor="password">Password</label>
+                <button type="button" className="text-button">
+                  Forgot password?
+                </button>
+              </div>
+
+              <input
+                id="password"
+                name="password"
+                type="password"
+                placeholder="Enter your password"
+                value={formData.password}
+                onChange={handleChange}
+                autoComplete="current-password"
+                minLength={8}
+                required
+              />
+            </div>
+
+            <div className="form-options">
+              <label className="remember-option">
+                <input type="checkbox" />
+                <span>Remember me</span>
+              </label>
+            </div>
+
+            <button
+              type="submit"
+              className="primary-auth-button"
+              disabled={submitting}
+            >
+              {submitting ? "Signing in..." : "Sign in"}
+            </button>
+          </form>
+
+          <div className="auth-divider">
+            <span />
+            <p>New to NoteSpace?</p>
+            <span />
+          </div>
+
+          <Link to="/register" className="secondary-auth-button">
+            Create an account
+          </Link>
+
+          <p className="auth-legal">
+            By continuing, you agree to the NoteSpace Terms of Service and
+            Privacy Policy.
+          </p>
+        </div>
+      </section>
     </div>
   );
 }

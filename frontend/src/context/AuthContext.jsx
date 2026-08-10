@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
+
 import api from "../api/axios";
 
 const AuthContext = createContext(null);
@@ -18,6 +19,7 @@ export function AuthProvider({ children }) {
     const loadUser = async () => {
       try {
         const response = await api.get("/users/me");
+
         setUser(response.data);
       } catch {
         localStorage.removeItem("accessToken");
@@ -30,18 +32,6 @@ export function AuthProvider({ children }) {
     loadUser();
   }, []);
 
-  const login = async (email, password) => {
-    const response = await api.post("/auth/login", {
-      email,
-      password,
-    });
-
-    localStorage.setItem("accessToken", response.data.access_token);
-    setUser(response.data.user);
-
-    return response.data;
-  };
-
   const register = async (name, email, password) => {
     const response = await api.post("/auth/signup", {
       name,
@@ -49,14 +39,29 @@ export function AuthProvider({ children }) {
       password,
     });
 
-    localStorage.setItem("accessToken", response.data.access_token);
-    setUser(response.data.user);
-
     return response.data;
+  };
+
+  const login = async (email, password) => {
+    const response = await api.post("/auth/login", {
+      email,
+      password,
+    });
+
+    const token = response.data.access_token;
+
+    localStorage.setItem("accessToken", token);
+
+    const userResponse = await api.get("/users/me");
+
+    setUser(userResponse.data);
+
+    return userResponse.data;
   };
 
   const logout = () => {
     localStorage.removeItem("accessToken");
+
     setUser(null);
   };
 
@@ -65,8 +70,8 @@ export function AuthProvider({ children }) {
       value={{
         user,
         loading,
-        login,
         register,
+        login,
         logout,
         isAuthenticated: Boolean(user),
       }}

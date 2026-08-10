@@ -1,0 +1,246 @@
+.search-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 110px 20px 20px;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(5px);
+}
+
+.search-modal {
+  width: min(650px, 100%);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow:
+    0 35px 90px rgba(15, 23, 42, 0.25),
+    0 10px 30px rgba(15, 23, 42, 0.12);
+}
+
+.search-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 17px 18px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.search-icon {
+  color: #64748b;
+  font-size: 22px;
+}
+
+.search-input-wrapper input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: #0f172a;
+  font: inherit;
+  font-size: 16px;
+  outline: none;
+}
+
+.search-input-wrapper input::placeholder {
+  color: #94a3b8;
+}
+
+.search-input-wrapper kbd,
+.search-footer kbd {
+  padding: 4px 7px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #64748b;
+  font-family: inherit;
+  font-size: 9px;
+}
+
+.search-content {
+  max-height: 440px;
+  overflow-y: auto;
+}
+
+.search-default {
+  padding: 20px;
+}
+
+.search-section-label {
+  color: #94a3b8;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.search-tip {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 13px;
+  padding: 16px;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.search-tip > div:first-child {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  place-items: center;
+  border-radius: 10px;
+  background: #eef2ff;
+  color: #4f46e5;
+  font-weight: 800;
+}
+
+.search-tip strong {
+  color: #334155;
+  font-size: 13px;
+}
+
+.search-tip p {
+  margin: 4px 0 0;
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.search-results-header {
+  display: flex;
+  justify-content: space-between;
+  padding: 14px 18px 8px;
+  color: #94a3b8;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.search-results {
+  padding: 4px 9px 10px;
+}
+
+.search-result {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 13px;
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.search-result:hover {
+  background: #f8fafc;
+}
+
+.result-icon {
+  display: grid;
+  width: 39px;
+  height: 39px;
+  flex: 0 0 39px;
+  place-items: center;
+  border-radius: 9px;
+  background: #eef2ff;
+  color: #4f46e5;
+}
+
+.result-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.result-content strong {
+  display: block;
+  overflow: hidden;
+  color: #334155;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.result-content p {
+  overflow: hidden;
+  margin: 4px 0;
+  color: #94a3b8;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.result-content span {
+  color: #6366f1;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.result-arrow {
+  color: #cbd5e1;
+}
+
+.search-loading {
+  padding: 55px 20px;
+  color: #64748b;
+  font-size: 13px;
+  text-align: center;
+}
+
+.search-empty {
+  padding: 50px 20px;
+  text-align: center;
+}
+
+.search-empty > div {
+  display: grid;
+  width: 50px;
+  height: 50px;
+  margin: 0 auto;
+  place-items: center;
+  border-radius: 13px;
+  background: #eef2ff;
+  color: #4f46e5;
+  font-weight: 800;
+}
+
+.search-empty h3 {
+  margin: 14px 0 0;
+  color: #334155;
+  font-size: 15px;
+}
+
+.search-empty p {
+  margin: 6px 0 0;
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.search-footer {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 11px 16px;
+  border-top: 1px solid #e5e7eb;
+  background: #f8fafc;
+}
+
+.search-footer > div {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #94a3b8;
+  font-size: 9px;
+}
+
+.search-powered {
+  margin-left: auto;
+  color: #94a3b8;
+  font-size: 9px;
+  font-weight: 600;
+}
