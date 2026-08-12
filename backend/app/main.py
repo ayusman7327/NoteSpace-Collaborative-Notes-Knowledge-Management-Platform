@@ -4,6 +4,7 @@ load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 from app.database import Base, engine
 
@@ -66,4 +67,40 @@ def root():
 def health_check():
     return {
         "status": "healthy",
+    }
+
+
+@app.get("/debug/database")
+def debug_database():
+    try:
+        with engine.connect() as connection:
+            connection.execute(
+                text("SELECT 1")
+            )
+
+        return {
+            "database": "connected",
+        }
+
+    except Exception as error:
+        return {
+            "database": "error",
+            "detail": str(error),
+        }
+
+
+@app.get("/debug/config")
+def debug_config():
+    from app.core.config import settings
+
+    return {
+        "database_url_configured": bool(
+            settings.database_url
+        ),
+        "secret_key_configured": bool(
+            settings.secret_key
+        ),
+        "gemini_configured": bool(
+            settings.gemini_api_key
+        ),
     }

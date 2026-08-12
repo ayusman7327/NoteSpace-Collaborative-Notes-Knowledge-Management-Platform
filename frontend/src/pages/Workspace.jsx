@@ -18,12 +18,16 @@ import {
   updatePage,
 } from "../api/pages";
 
+import { useAuth } from "../context/AuthContext";
+
 import AIAssistant from "../components/AIAssistant";
+import CommentsPanel from "../components/CommentsPanel";
 
 import "./Workspace.css";
 
 function Workspace() {
   const { workspaceId } = useParams();
+  const { user } = useAuth();
 
   const [pages, setPages] = useState([]);
   const [trash, setTrash] = useState([]);
@@ -42,6 +46,7 @@ function Workspace() {
   const [showTrash, setShowTrash] = useState(false);
   const [showVersions, setShowVersions] = useState(false);
   const [showAI, setShowAI] = useState(false);
+  const [showComments, setShowComments] = useState(false);
 
   const saveTimer = useRef(null);
 
@@ -145,6 +150,8 @@ function Workspace() {
 
       setShowTrash(false);
       setShowVersions(false);
+      setShowAI(false);
+      setShowComments(false);
 
       setPages((current) =>
         current.map((item) => (item.id === openedPage.id ? openedPage : item)),
@@ -223,6 +230,7 @@ function Workspace() {
 
       setShowVersions(false);
       setShowAI(false);
+      setShowComments(false);
 
       toast.success("Page moved to trash");
     } catch (error) {
@@ -240,6 +248,7 @@ function Workspace() {
       setShowTrash(true);
       setShowVersions(false);
       setShowAI(false);
+      setShowComments(false);
     } catch (error) {
       toast.error(error.response?.data?.detail || "Unable to load trash");
     }
@@ -302,6 +311,7 @@ function Workspace() {
       setShowVersions(true);
       setShowTrash(false);
       setShowAI(false);
+      setShowComments(false);
     } catch (error) {
       toast.error(
         error.response?.data?.detail || "Unable to load version history",
@@ -491,11 +501,6 @@ function Workspace() {
                       : "favorite-button"
                   }
                   onClick={handleToggleFavorite}
-                  title={
-                    selectedPage.is_favorite
-                      ? "Remove from favorites"
-                      : "Add to favorites"
-                  }
                 >
                   {selectedPage.is_favorite ? "★" : "☆"}
                 </button>
@@ -503,9 +508,23 @@ function Workspace() {
                 <button
                   type="button"
                   className="workspace-secondary-button"
-                  onClick={() => setShowAI(true)}
+                  onClick={() => {
+                    setShowComments(false);
+                    setShowAI(true);
+                  }}
                 >
                   ✦ Ask AI
+                </button>
+
+                <button
+                  type="button"
+                  className="workspace-secondary-button"
+                  onClick={() => {
+                    setShowAI(false);
+                    setShowComments(true);
+                  }}
+                >
+                  Comments
                 </button>
 
                 <button
@@ -797,6 +816,13 @@ function Workspace() {
         onClose={() => setShowAI(false)}
         editor={editor}
         pageTitle={title}
+      />
+
+      <CommentsPanel
+        open={showComments}
+        onClose={() => setShowComments(false)}
+        pageId={selectedPage?.id}
+        currentUserId={user?.id}
       />
     </div>
   );
