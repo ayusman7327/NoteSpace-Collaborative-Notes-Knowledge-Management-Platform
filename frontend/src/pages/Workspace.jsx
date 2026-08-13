@@ -22,6 +22,8 @@ import { useAuth } from "../context/AuthContext";
 
 import AIAssistant from "../components/AIAssistant";
 import CommentsPanel from "../components/CommentsPanel";
+import InviteMembersModal from "../components/InviteMembersModal";
+import WorkspaceMembersPanel from "../components/WorkspaceMembersPanel";
 
 import "./Workspace.css";
 
@@ -47,8 +49,17 @@ function Workspace() {
   const [showVersions, setShowVersions] = useState(false);
   const [showAI, setShowAI] = useState(false);
   const [showComments, setShowComments] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showMembers, setShowMembers] = useState(false);
 
   const saveTimer = useRef(null);
+
+  const closeSidePanels = () => {
+    setShowAI(false);
+    setShowComments(false);
+    setShowInviteModal(false);
+    setShowMembers(false);
+  };
 
   const editor = useEditor({
     extensions: [StarterKit],
@@ -150,8 +161,8 @@ function Workspace() {
 
       setShowTrash(false);
       setShowVersions(false);
-      setShowAI(false);
-      setShowComments(false);
+
+      closeSidePanels();
 
       setPages((current) =>
         current.map((item) => (item.id === openedPage.id ? openedPage : item)),
@@ -229,8 +240,8 @@ function Workspace() {
       editor?.commands.clearContent();
 
       setShowVersions(false);
-      setShowAI(false);
-      setShowComments(false);
+
+      closeSidePanels();
 
       toast.success("Page moved to trash");
     } catch (error) {
@@ -247,8 +258,8 @@ function Workspace() {
 
       setShowTrash(true);
       setShowVersions(false);
-      setShowAI(false);
-      setShowComments(false);
+
+      closeSidePanels();
     } catch (error) {
       toast.error(error.response?.data?.detail || "Unable to load trash");
     }
@@ -310,8 +321,8 @@ function Workspace() {
 
       setShowVersions(true);
       setShowTrash(false);
-      setShowAI(false);
-      setShowComments(false);
+
+      closeSidePanels();
     } catch (error) {
       toast.error(
         error.response?.data?.detail || "Unable to load version history",
@@ -347,6 +358,38 @@ function Workspace() {
     } catch (error) {
       toast.error(error.response?.data?.detail || "Unable to restore version");
     }
+  };
+
+  const handleOpenAI = () => {
+    setShowComments(false);
+    setShowInviteModal(false);
+    setShowMembers(false);
+
+    setShowAI(true);
+  };
+
+  const handleOpenComments = () => {
+    setShowAI(false);
+    setShowInviteModal(false);
+    setShowMembers(false);
+
+    setShowComments(true);
+  };
+
+  const handleOpenShare = () => {
+    setShowAI(false);
+    setShowComments(false);
+    setShowMembers(false);
+
+    setShowInviteModal(true);
+  };
+
+  const handleOpenMembers = () => {
+    setShowAI(false);
+    setShowComments(false);
+    setShowInviteModal(false);
+
+    setShowMembers(true);
   };
 
   const renderPageTree = (parentId = null, level = 0) => {
@@ -457,6 +500,15 @@ function Workspace() {
             Trash
           </button>
 
+          <button
+            type="button"
+            className="sidebar-footer-button"
+            onClick={handleOpenMembers}
+          >
+            <span>👥</span>
+            Members
+          </button>
+
           <button type="button" className="sidebar-footer-button">
             <span>⚙</span>
             Workspace settings
@@ -501,6 +553,11 @@ function Workspace() {
                       : "favorite-button"
                   }
                   onClick={handleToggleFavorite}
+                  title={
+                    selectedPage.is_favorite
+                      ? "Remove from favorites"
+                      : "Add to favorites"
+                  }
                 >
                   {selectedPage.is_favorite ? "★" : "☆"}
                 </button>
@@ -508,10 +565,7 @@ function Workspace() {
                 <button
                   type="button"
                   className="workspace-secondary-button"
-                  onClick={() => {
-                    setShowComments(false);
-                    setShowAI(true);
-                  }}
+                  onClick={handleOpenAI}
                 >
                   ✦ Ask AI
                 </button>
@@ -519,10 +573,7 @@ function Workspace() {
                 <button
                   type="button"
                   className="workspace-secondary-button"
-                  onClick={() => {
-                    setShowAI(false);
-                    setShowComments(true);
-                  }}
+                  onClick={handleOpenComments}
                 >
                   Comments
                 </button>
@@ -535,8 +586,20 @@ function Workspace() {
                   History
                 </button>
 
-                <button type="button" className="workspace-secondary-button">
+                <button
+                  type="button"
+                  className="workspace-secondary-button"
+                  onClick={handleOpenShare}
+                >
                   Share
+                </button>
+
+                <button
+                  type="button"
+                  className="workspace-secondary-button"
+                  onClick={handleOpenMembers}
+                >
+                  Members
                 </button>
 
                 <button type="button" className="workspace-more-button">
@@ -822,6 +885,19 @@ function Workspace() {
         open={showComments}
         onClose={() => setShowComments(false)}
         pageId={selectedPage?.id}
+        currentUserId={user?.id}
+      />
+
+      <InviteMembersModal
+        open={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
+        workspaceId={workspaceId}
+      />
+
+      <WorkspaceMembersPanel
+        open={showMembers}
+        onClose={() => setShowMembers(false)}
+        workspaceId={workspaceId}
         currentUserId={user?.id}
       />
     </div>

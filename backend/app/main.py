@@ -1,19 +1,30 @@
+import os
+
 from dotenv import load_dotenv
 
 load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
 from app.database import Base, engine
 
 from app.routers.activity_logs import router as activity_logs_router
 from app.routers.ai import router as ai_router
+from app.routers.attachments import router as attachments_router
 from app.routers.auth import router as auth_router
+from app.routers.comments import router as comments_router
 from app.routers.pages import router as pages_router
 from app.routers.tags import router as tags_router
 from app.routers.users import router as users_router
+from app.routers.workspace_invitations import (
+    router as workspace_invitations_router,
+)
+from app.routers.workspace_members import (
+    router as workspace_members_router,
+)
 from app.routers.workspaces import router as workspaces_router
 
 
@@ -45,6 +56,18 @@ app.add_middleware(
 )
 
 
+os.makedirs(
+    "uploads",
+    exist_ok=True,
+)
+
+app.mount(
+    "/uploads",
+    StaticFiles(directory="uploads"),
+    name="uploads",
+)
+
+
 app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(workspaces_router)
@@ -52,6 +75,10 @@ app.include_router(pages_router)
 app.include_router(tags_router)
 app.include_router(activity_logs_router)
 app.include_router(ai_router)
+app.include_router(comments_router)
+app.include_router(workspace_invitations_router)
+app.include_router(workspace_members_router)
+app.include_router(attachments_router)
 
 
 @app.get("/")

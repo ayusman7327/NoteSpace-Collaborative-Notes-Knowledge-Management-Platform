@@ -1,0 +1,317 @@
+.attachments-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 125;
+  width: 400px;
+  height: 100vh;
+  overflow-y: auto;
+  border-left: 1px solid #e5e7eb;
+  background: #ffffff;
+  box-shadow: -20px 0 60px rgba(15, 23, 42, 0.08);
+}
+
+.attachments-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px;
+  border-bottom: 1px solid #e5e7eb;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(14px);
+}
+
+.attachments-header > div:first-child {
+  min-width: 0;
+}
+
+.attachments-header span {
+  color: #6366f1;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.attachments-header h2 {
+  margin: 5px 0 0;
+  color: #0f172a;
+  font-size: 21px;
+}
+
+.attachments-header p {
+  max-width: 270px;
+  margin: 7px 0 0;
+  color: #94a3b8;
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.attachments-close-button {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #64748b;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.attachments-close-button:hover {
+  background: #f1f5f9;
+}
+
+.attachments-body {
+  padding: 18px;
+}
+
+.attachment-drop-zone {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 18px;
+  border: 1px dashed #c7d2fe;
+  border-radius: 12px;
+  background: #f8fafc;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.attachment-drop-zone:hover {
+  border-color: #6366f1;
+  background: #eef2ff;
+}
+
+.attachment-drop-zone.dragging {
+  border-color: #4f46e5;
+  background: #eef2ff;
+  transform: scale(1.01);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.08);
+}
+
+.drop-zone-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  place-items: center;
+  border-radius: 11px;
+  background: #e0e7ff;
+  color: #4338ca;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.drop-zone-content {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.drop-zone-content strong {
+  color: #334155;
+  font-size: 11px;
+}
+
+.drop-zone-content span {
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 9px;
+}
+
+.drop-zone-content small {
+  margin-top: 4px;
+  color: #94a3b8;
+  font-size: 8px;
+  line-height: 1.5;
+}
+
+.attachment-limit {
+  margin-top: 8px;
+  color: #94a3b8;
+  font-size: 8px;
+}
+
+.attachments-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  margin-top: 26px;
+}
+
+.attachments-section-heading h3 {
+  margin: 0;
+  color: #334155;
+  font-size: 13px;
+}
+
+.attachments-section-heading p {
+  margin: 4px 0 0;
+  color: #94a3b8;
+  font-size: 9px;
+}
+
+.attachments-section-heading > span {
+  display: grid;
+  min-width: 27px;
+  height: 27px;
+  padding: 0 7px;
+  place-items: center;
+  border-radius: 8px;
+  background: #eef2ff;
+  color: #4f46e5;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.attachments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-top: 14px;
+}
+
+.attachment-card {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 11px;
+  background: #ffffff;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.attachment-card:hover {
+  border-color: #c7d2fe;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+}
+
+.attachment-icon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  place-items: center;
+  border-radius: 9px;
+  background: #eef2ff;
+  color: #4f46e5;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.attachment-info {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.attachment-info strong {
+  overflow: hidden;
+  color: #334155;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment-info > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 4px;
+  color: #94a3b8;
+  font-size: 8px;
+}
+
+.attachment-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.attachment-actions a,
+.attachment-actions button {
+  padding: 7px 8px;
+  border-radius: 7px;
+  font: inherit;
+  font-size: 8px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.attachment-actions a {
+  border: 1px solid #c7d2fe;
+  background: #eef2ff;
+  color: #4f46e5;
+}
+
+.attachment-actions a:hover {
+  background: #e0e7ff;
+}
+
+.attachment-actions button {
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.attachment-actions button:hover {
+  background: #fee2e2;
+}
+
+.attachments-message,
+.attachments-empty {
+  margin-top: 14px;
+  padding: 32px 18px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 11px;
+  color: #94a3b8;
+  font-size: 10px;
+  text-align: center;
+}
+
+.attachments-empty > div {
+  font-size: 22px;
+}
+
+.attachments-empty h3 {
+  margin: 10px 0 0;
+  color: #475569;
+  font-size: 12px;
+}
+
+.attachments-empty p {
+  max-width: 230px;
+  margin: 5px auto 0;
+  line-height: 1.6;
+}
+
+@media (max-width: 650px) {
+  .attachments-panel {
+    width: 100%;
+  }
+
+  .attachment-card {
+    align-items: flex-start;
+  }
+
+  .attachment-actions {
+    flex-direction: column;
+  }
+}

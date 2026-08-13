@@ -123,3 +123,9 @@ class Page(Base):
         back_populates="page",
         cascade="all, delete-orphan",
     )
+
+    attachments = relationship(
+        "Attachment",
+        back_populates="page",
+        cascade="all, delete-orphan",
+    )
