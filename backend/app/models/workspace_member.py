@@ -1,12 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import (
-    DateTime,
-    ForeignKey,
-    Integer,
-    String,
-    UniqueConstraint,
-)
+from sqlalchemy import DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -30,30 +24,24 @@ class WorkspaceMember(Base):
     )
 
     workspace_id: Mapped[int] = mapped_column(
-        ForeignKey(
-            "workspaces.id",
-            ondelete="CASCADE",
-        ),
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
 
     user_id: Mapped[int] = mapped_column(
-        ForeignKey(
-            "users.id",
-            ondelete="CASCADE",
-        ),
+        ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
 
     role: Mapped[str] = mapped_column(
-        String(20),
+        String(50),
         default="viewer",
         nullable=False,
     )
 
-    joined_at: Mapped[datetime] = mapped_column(
+    created_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.utcnow,
         nullable=False,
@@ -61,8 +49,5 @@ class WorkspaceMember(Base):
 
     workspace = relationship(
         "Workspace",
-    )
-
-    user = relationship(
-        "User",
+        back_populates="members",
     )

@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+from app.core.dependencies import get_current_user
 from app.database import get_db
 from app.models.user import User
 from app.schemas.workspace_invitation import (
     WorkspaceInvitationCreate,
     WorkspaceInvitationResponse,
 )
-from app.services.auth_service import get_current_user
 from app.services.workspace_invitation_service import (
     accept_workspace_invitation,
     cancel_workspace_invitation,

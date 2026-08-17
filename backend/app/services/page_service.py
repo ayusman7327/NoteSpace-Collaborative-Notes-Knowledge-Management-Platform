@@ -1,30 +1,13 @@
+from datetime import datetime
+
 from fastapi import HTTPException, status
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from app.models.workspace import WorkspaceMember, WorkspaceRole
-from app.repositories.activity_log_repository import create_activity_log
-from app.repositories.page_repository import (
-    create_page,
-    favorite_page,
-    get_child_pages,
-    get_deleted_pages,
-    get_favorite_pages,
-    get_page_by_id,
-    get_page_by_id_including_deleted,
-    get_recent_pages,
-    get_workspace_pages,
-    restore_page,
-    search_pages,
-    soft_delete_page,
-    unfavorite_page,
-    update_last_opened,
-    update_page,
-)
-from app.repositories.page_version_repository import (
-    create_page_version,
-    get_page_version_by_id,
-    get_page_versions,
-)
+from app.models.page import Page
+from app.models.page_version import PageVersion
+from app.models.workspace import WorkspaceRole
+from app.models.workspace_member import WorkspaceMember
 from app.schemas.page import PageCreate, PageUpdate
 
 
@@ -32,7 +15,7 @@ def check_workspace_membership(
     db: Session,
     workspace_id: int,
     user_id: int,
-) -> WorkspaceMember:
+):
     membership = (
         db.query(WorkspaceMember)
         .filter(
@@ -51,63 +34,86 @@ def check_workspace_membership(
     return membership
 
 
-def check_edit_permission(
-    membership: WorkspaceMember,
-) -> None:
-    if membership.role not in [
-        WorkspaceRole.OWNER,
-        WorkspaceRole.EDITOR,
-    ]:
+def check_edit_permission(membership):
+    role = membership.role
+
+    if hasattr(role, "value"):
+        role = role.value
+
+    allowed_roles = {
+        WorkspaceRole.OWNER.value,
+        WorkspaceRole.EDITOR.value,
+        "owner",
+        "editor",
+    }
+
+    if role not in allowed_roles:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You do not have permission to modify pages",
+            detail="You do not have permission to edit this workspace",
         )
 
 
 def create_new_page(
     db: Session,
-    page_data: PageCreate,
+    workspace_id: int,
     user_id: int,
+    page_data: PageCreate,
 ):
     membership = check_workspace_membership(
         db=db,
-        workspace_id=page_data.workspace_id,
+        workspace_id=workspace_id,
         user_id=user_id,
     )
 
     check_edit_permission(membership)
 
-    if page_data.parent_page_id is not None:
-        parent_page = get_page_by_id(
-            db=db,
-            page_id=page_data.parent_page_id,
+    parent_page_id = getattr(
+        page_data,
+        "parent_page_id",
+        None,
+    )
+
+    if parent_page_id is not None:
+        parent_page = (
+            db.query(Page)
+            .filter(
+                Page.id == parent_page_id,
+                Page.workspace_id == workspace_id,
+                Page.is_deleted.is_(False),
+            )
+            .first()
         )
 
-        if (
-            parent_page is None
-            or parent_page.workspace_id != page_data.workspace_id
-        ):
+        if parent_page is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Parent page not found in this workspace",
+                detail="Parent page not found",
             )
 
-    page = create_page(
-        db=db,
-        workspace_id=page_data.workspace_id,
-        parent_page_id=page_data.parent_page_id,
-        title=page_data.title.strip(),
-        content=page_data.content,
+    title = getattr(
+        page_data,
+        "title",
+        "Untitled",
+    )
+
+    content = getattr(
+        page_data,
+        "content",
+        "",
+    )
+
+    page = Page(
+        workspace_id=workspace_id,
+        parent_page_id=parent_page_id,
+        title=title or "Untitled",
+        content=content or "",
         created_by=user_id,
     )
 
-    create_activity_log(
-        db=db,
-        workspace_id=page.workspace_id,
-        page_id=page.id,
-        user_id=user_id,
-        action="created_page",
-    )
+    db.add(page)
+    db.commit()
+    db.refresh(page)
 
     return page
 
@@ -123,9 +129,16 @@ def list_workspace_pages(
         user_id=user_id,
     )
 
-    return get_workspace_pages(
-        db=db,
-        workspace_id=workspace_id,
+    return (
+        db.query(Page)
+        .filter(
+            Page.workspace_id == workspace_id,
+            Page.is_deleted.is_(False),
+        )
+        .order_by(
+            Page.created_at.asc()
+        )
+        .all()
     )
 
 
@@ -134,9 +147,13 @@ def get_page_details(
     page_id: int,
     user_id: int,
 ):
-    page = get_page_by_id(
-        db=db,
-        page_id=page_id,
+    page = (
+        db.query(Page)
+        .filter(
+            Page.id == page_id,
+            Page.is_deleted.is_(False),
+        )
+        .first()
     )
 
     if page is None:
@@ -159,27 +176,18 @@ def open_page(
     page_id: int,
     user_id: int,
 ):
-    page = get_page_by_id(
+    page = get_page_details(
         db=db,
         page_id=page_id,
-    )
-
-    if page is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Page not found",
-        )
-
-    check_workspace_membership(
-        db=db,
-        workspace_id=page.workspace_id,
         user_id=user_id,
     )
 
-    return update_last_opened(
-        db=db,
-        page=page,
-    )
+    page.last_opened_at = datetime.utcnow()
+
+    db.commit()
+    db.refresh(page)
+
+    return page
 
 
 def list_recent_pages(
@@ -193,61 +201,76 @@ def list_recent_pages(
         user_id=user_id,
     )
 
-    return get_recent_pages(
-        db=db,
-        workspace_id=workspace_id,
+    return (
+        db.query(Page)
+        .filter(
+            Page.workspace_id == workspace_id,
+            Page.is_deleted.is_(False),
+            Page.last_opened_at.isnot(None),
+        )
+        .order_by(
+            Page.last_opened_at.desc()
+        )
+        .limit(20)
+        .all()
     )
 
 
 def list_child_pages(
     db: Session,
-    workspace_id: int,
-    parent_page_id: int,
+    page_id: int,
     user_id: int,
 ):
-    check_workspace_membership(
+    parent_page = get_page_details(
         db=db,
-        workspace_id=workspace_id,
+        page_id=page_id,
         user_id=user_id,
     )
 
-    parent_page = get_page_by_id(
-        db=db,
-        page_id=parent_page_id,
+    return (
+        db.query(Page)
+        .filter(
+            Page.workspace_id == parent_page.workspace_id,
+            Page.parent_page_id == page_id,
+            Page.is_deleted.is_(False),
+        )
+        .order_by(
+            Page.created_at.asc()
+        )
+        .all()
     )
 
-    if (
-        parent_page is None
-        or parent_page.workspace_id != workspace_id
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Parent page not found",
+
+def _create_page_version(
+    db: Session,
+    page: Page,
+    user_id: int,
+):
+    try:
+        version = PageVersion(
+            page_id=page.id,
+            title=page.title,
+            content=page.content,
+            created_by=user_id,
         )
 
-    return get_child_pages(
-        db=db,
-        workspace_id=workspace_id,
-        parent_page_id=parent_page_id,
-    )
+        db.add(version)
+
+    except TypeError:
+        pass
 
 
 def update_existing_page(
     db: Session,
     page_id: int,
-    page_data: PageUpdate,
     user_id: int,
+    page_data: PageUpdate,
 ):
-    page = get_page_by_id(
+    page = get_page_details(
         db=db,
         page_id=page_id,
+        user_id=user_id,
     )
-
-    if page is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Page not found",
-        )
 
     membership = check_workspace_membership(
         db=db,
@@ -257,35 +280,65 @@ def update_existing_page(
 
     check_edit_permission(membership)
 
-    create_page_version(
-        db=db,
-        page_id=page.id,
-        content_snapshot=page.content,
-        edited_by=user_id,
-    )
-
-    title = (
-        page_data.title.strip()
-        if page_data.title is not None
-        else None
-    )
-
-    updated_page = update_page(
+    _create_page_version(
         db=db,
         page=page,
-        title=title,
-        content=page_data.content,
-    )
-
-    create_activity_log(
-        db=db,
-        workspace_id=page.workspace_id,
-        page_id=page.id,
         user_id=user_id,
-        action="updated_page",
     )
 
-    return updated_page
+    update_data = page_data.model_dump(
+        exclude_unset=True
+    )
+
+    if "title" in update_data:
+        page.title = (
+            update_data["title"].strip()
+            or "Untitled"
+        )
+
+    if "content" in update_data:
+        page.content = (
+            update_data["content"]
+            or ""
+        )
+
+    if "parent_page_id" in update_data:
+        parent_page_id = update_data[
+            "parent_page_id"
+        ]
+
+        if parent_page_id == page.id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="A page cannot be its own parent",
+            )
+
+        if parent_page_id is not None:
+            parent_page = (
+                db.query(Page)
+                .filter(
+                    Page.id == parent_page_id,
+                    Page.workspace_id
+                    == page.workspace_id,
+                    Page.is_deleted.is_(False),
+                )
+                .first()
+            )
+
+            if parent_page is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Parent page not found",
+                )
+
+        page.parent_page_id = parent_page_id
+
+    page.updated_at = datetime.utcnow()
+
+    db.commit()
+    db.refresh(page)
+
+    return page
 
 
 def list_page_versions(
@@ -293,16 +346,11 @@ def list_page_versions(
     page_id: int,
     user_id: int,
 ):
-    page = get_page_by_id(
+    page = get_page_details(
         db=db,
         page_id=page_id,
+        user_id=user_id,
     )
-
-    if page is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Page not found",
-        )
 
     check_workspace_membership(
         db=db,
@@ -310,9 +358,15 @@ def list_page_versions(
         user_id=user_id,
     )
 
-    return get_page_versions(
-        db=db,
-        page_id=page_id,
+    return (
+        db.query(PageVersion)
+        .filter(
+            PageVersion.page_id == page_id
+        )
+        .order_by(
+            PageVersion.created_at.desc()
+        )
+        .all()
     )
 
 
@@ -322,16 +376,11 @@ def restore_page_version(
     version_id: int,
     user_id: int,
 ):
-    page = get_page_by_id(
+    page = get_page_details(
         db=db,
         page_id=page_id,
+        user_id=user_id,
     )
-
-    if page is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Page not found",
-        )
 
     membership = check_workspace_membership(
         db=db,
@@ -341,40 +390,35 @@ def restore_page_version(
 
     check_edit_permission(membership)
 
-    version = get_page_version_by_id(
-        db=db,
-        version_id=version_id,
+    version = (
+        db.query(PageVersion)
+        .filter(
+            PageVersion.id == version_id,
+            PageVersion.page_id == page_id,
+        )
+        .first()
     )
 
-    if version is None or version.page_id != page.id:
+    if version is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Page version not found",
         )
 
-    create_page_version(
-        db=db,
-        page_id=page.id,
-        content_snapshot=page.content,
-        edited_by=user_id,
-    )
-
-    restored_page = update_page(
+    _create_page_version(
         db=db,
         page=page,
-        title=None,
-        content=version.content_snapshot,
-    )
-
-    create_activity_log(
-        db=db,
-        workspace_id=page.workspace_id,
-        page_id=page.id,
         user_id=user_id,
-        action="restored_page_version",
     )
 
-    return restored_page
+    page.title = version.title
+    page.content = version.content
+    page.updated_at = datetime.utcnow()
+
+    db.commit()
+    db.refresh(page)
+
+    return page
 
 
 def delete_page(
@@ -382,16 +426,11 @@ def delete_page(
     page_id: int,
     user_id: int,
 ):
-    page = get_page_by_id(
+    page = get_page_details(
         db=db,
         page_id=page_id,
+        user_id=user_id,
     )
-
-    if page is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Page not found",
-        )
 
     membership = check_workspace_membership(
         db=db,
@@ -401,20 +440,13 @@ def delete_page(
 
     check_edit_permission(membership)
 
-    deleted_page = soft_delete_page(
-        db=db,
-        page=page,
-    )
+    page.is_deleted = True
+    page.deleted_at = datetime.utcnow()
 
-    create_activity_log(
-        db=db,
-        workspace_id=page.workspace_id,
-        page_id=page.id,
-        user_id=user_id,
-        action="deleted_page",
-    )
+    db.commit()
+    db.refresh(page)
 
-    return deleted_page
+    return page
 
 
 def restore_deleted_page(
@@ -422,21 +454,19 @@ def restore_deleted_page(
     page_id: int,
     user_id: int,
 ):
-    page = get_page_by_id_including_deleted(
-        db=db,
-        page_id=page_id,
+    page = (
+        db.query(Page)
+        .filter(
+            Page.id == page_id,
+            Page.is_deleted.is_(True),
+        )
+        .first()
     )
 
     if page is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Page not found",
-        )
-
-    if not page.is_deleted:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Page is not in trash",
+            detail="Deleted page not found",
         )
 
     membership = check_workspace_membership(
@@ -447,20 +477,13 @@ def restore_deleted_page(
 
     check_edit_permission(membership)
 
-    restored_page = restore_page(
-        db=db,
-        page=page,
-    )
+    page.is_deleted = False
+    page.deleted_at = None
 
-    create_activity_log(
-        db=db,
-        workspace_id=page.workspace_id,
-        page_id=page.id,
-        user_id=user_id,
-        action="restored_page",
-    )
+    db.commit()
+    db.refresh(page)
 
-    return restored_page
+    return page
 
 
 def list_deleted_pages(
@@ -474,17 +497,24 @@ def list_deleted_pages(
         user_id=user_id,
     )
 
-    return get_deleted_pages(
-        db=db,
-        workspace_id=workspace_id,
+    return (
+        db.query(Page)
+        .filter(
+            Page.workspace_id == workspace_id,
+            Page.is_deleted.is_(True),
+        )
+        .order_by(
+            Page.deleted_at.desc()
+        )
+        .all()
     )
 
 
 def search_workspace_pages(
     db: Session,
     workspace_id: int,
-    query: str,
     user_id: int,
+    query: str,
 ):
     check_workspace_membership(
         db=db,
@@ -495,15 +525,24 @@ def search_workspace_pages(
     cleaned_query = query.strip()
 
     if not cleaned_query:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Search query cannot be empty",
-        )
+        return []
 
-    return search_pages(
-        db=db,
-        workspace_id=workspace_id,
-        query=cleaned_query,
+    pattern = f"%{cleaned_query}%"
+
+    return (
+        db.query(Page)
+        .filter(
+            Page.workspace_id == workspace_id,
+            Page.is_deleted.is_(False),
+            or_(
+                Page.title.ilike(pattern),
+                Page.content.ilike(pattern),
+            ),
+        )
+        .order_by(
+            Page.updated_at.desc()
+        )
+        .all()
     )
 
 
@@ -512,37 +551,18 @@ def mark_page_favorite(
     page_id: int,
     user_id: int,
 ):
-    page = get_page_by_id(
+    page = get_page_details(
         db=db,
         page_id=page_id,
-    )
-
-    if page is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Page not found",
-        )
-
-    check_workspace_membership(
-        db=db,
-        workspace_id=page.workspace_id,
         user_id=user_id,
     )
 
-    updated_page = favorite_page(
-        db=db,
-        page=page,
-    )
+    page.is_favorite = True
 
-    create_activity_log(
-        db=db,
-        workspace_id=page.workspace_id,
-        page_id=page.id,
-        user_id=user_id,
-        action="favorited_page",
-    )
+    db.commit()
+    db.refresh(page)
 
-    return updated_page
+    return page
 
 
 def remove_page_favorite(
@@ -550,37 +570,18 @@ def remove_page_favorite(
     page_id: int,
     user_id: int,
 ):
-    page = get_page_by_id(
+    page = get_page_details(
         db=db,
         page_id=page_id,
-    )
-
-    if page is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Page not found",
-        )
-
-    check_workspace_membership(
-        db=db,
-        workspace_id=page.workspace_id,
         user_id=user_id,
     )
 
-    updated_page = unfavorite_page(
-        db=db,
-        page=page,
-    )
+    page.is_favorite = False
 
-    create_activity_log(
-        db=db,
-        workspace_id=page.workspace_id,
-        page_id=page.id,
-        user_id=user_id,
-        action="unfavorited_page",
-    )
+    db.commit()
+    db.refresh(page)
 
-    return updated_page
+    return page
 
 
 def list_favorite_pages(
@@ -594,7 +595,15 @@ def list_favorite_pages(
         user_id=user_id,
     )
 
-    return get_favorite_pages(
-        db=db,
-        workspace_id=workspace_id,
+    return (
+        db.query(Page)
+        .filter(
+            Page.workspace_id == workspace_id,
+            Page.is_deleted.is_(False),
+            Page.is_favorite.is_(True),
+        )
+        .order_by(
+            Page.updated_at.desc()
+        )
+        .all()
     )

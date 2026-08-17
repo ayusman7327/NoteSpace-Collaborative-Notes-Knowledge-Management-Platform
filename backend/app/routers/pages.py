@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_user
@@ -9,15 +9,12 @@ from app.schemas.page import (
     PageResponse,
     PageUpdate,
 )
-from app.schemas.page_version import PageVersionResponse
 from app.services.page_service import (
     create_new_page,
     delete_page,
     get_page_details,
-    list_child_pages,
     list_deleted_pages,
     list_favorite_pages,
-    list_page_versions,
     list_recent_pages,
     list_workspace_pages,
     mark_page_favorite,
@@ -37,19 +34,20 @@ router = APIRouter(
 
 
 @router.post(
-    "",
+    "/workspace/{workspace_id}",
     response_model=PageResponse,
-    status_code=status.HTTP_201_CREATED,
 )
 def create_page_route(
-    page_data: PageCreate,
-    current_user: User = Depends(get_current_user),
+    workspace_id: int,
+    data: PageCreate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     return create_new_page(
         db=db,
-        page_data=page_data,
+        workspace_id=workspace_id,
         user_id=current_user.id,
+        page_data=data,
     )
 
 
@@ -59,99 +57,12 @@ def create_page_route(
 )
 def get_workspace_pages_route(
     workspace_id: int,
-    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     return list_workspace_pages(
         db=db,
         workspace_id=workspace_id,
-        user_id=current_user.id,
-    )
-
-
-@router.get(
-    "/workspace/{workspace_id}/search",
-    response_model=list[PageResponse],
-)
-def search_pages_route(
-    workspace_id: int,
-    q: str = Query(
-        ...,
-        min_length=1,
-    ),
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    return search_workspace_pages(
-        db=db,
-        workspace_id=workspace_id,
-        query=q,
-        user_id=current_user.id,
-    )
-
-
-@router.get(
-    "/workspace/{workspace_id}/trash",
-    response_model=list[PageResponse],
-)
-def get_trash_route(
-    workspace_id: int,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    return list_deleted_pages(
-        db=db,
-        workspace_id=workspace_id,
-        user_id=current_user.id,
-    )
-
-
-@router.get(
-    "/workspace/{workspace_id}/favorites",
-    response_model=list[PageResponse],
-)
-def get_favorites_route(
-    workspace_id: int,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    return list_favorite_pages(
-        db=db,
-        workspace_id=workspace_id,
-        user_id=current_user.id,
-    )
-
-
-@router.get(
-    "/workspace/{workspace_id}/recent",
-    response_model=list[PageResponse],
-)
-def get_recent_pages_route(
-    workspace_id: int,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    return list_recent_pages(
-        db=db,
-        workspace_id=workspace_id,
-        user_id=current_user.id,
-    )
-
-
-@router.get(
-    "/workspace/{workspace_id}/parent/{parent_page_id}",
-    response_model=list[PageResponse],
-)
-def get_child_pages_route(
-    workspace_id: int,
-    parent_page_id: int,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    return list_child_pages(
-        db=db,
-        workspace_id=workspace_id,
-        parent_page_id=parent_page_id,
         user_id=current_user.id,
     )
 
@@ -162,8 +73,8 @@ def get_child_pages_route(
 )
 def get_page_route(
     page_id: int,
-    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     return get_page_details(
         db=db,
@@ -178,8 +89,8 @@ def get_page_route(
 )
 def open_page_route(
     page_id: int,
-    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     return open_page(
         db=db,
@@ -194,15 +105,15 @@ def open_page_route(
 )
 def update_page_route(
     page_id: int,
-    page_data: PageUpdate,
-    current_user: User = Depends(get_current_user),
+    data: PageUpdate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     return update_existing_page(
         db=db,
         page_id=page_id,
-        page_data=page_data,
         user_id=current_user.id,
+        page_data=data,
     )
 
 
@@ -212,8 +123,8 @@ def update_page_route(
 )
 def delete_page_route(
     page_id: int,
-    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     return delete_page(
         db=db,
@@ -228,8 +139,8 @@ def delete_page_route(
 )
 def restore_page_route(
     page_id: int,
-    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     return restore_deleted_page(
         db=db,
@@ -244,8 +155,8 @@ def restore_page_route(
 )
 def favorite_page_route(
     page_id: int,
-    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     return mark_page_favorite(
         db=db,
@@ -260,8 +171,8 @@ def favorite_page_route(
 )
 def unfavorite_page_route(
     page_id: int,
-    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     return remove_page_favorite(
         db=db,
@@ -271,18 +182,68 @@ def unfavorite_page_route(
 
 
 @router.get(
-    "/{page_id}/versions",
-    response_model=list[PageVersionResponse],
+    "/workspace/{workspace_id}/trash",
+    response_model=list[PageResponse],
 )
-def get_page_versions_route(
-    page_id: int,
-    current_user: User = Depends(get_current_user),
+def get_trash_route(
+    workspace_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    return list_page_versions(
+    return list_deleted_pages(
         db=db,
-        page_id=page_id,
+        workspace_id=workspace_id,
         user_id=current_user.id,
+    )
+
+
+@router.get(
+    "/workspace/{workspace_id}/recent",
+    response_model=list[PageResponse],
+)
+def get_recent_pages_route(
+    workspace_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return list_recent_pages(
+        db=db,
+        workspace_id=workspace_id,
+        user_id=current_user.id,
+    )
+
+
+@router.get(
+    "/workspace/{workspace_id}/favorites",
+    response_model=list[PageResponse],
+)
+def get_favorite_pages_route(
+    workspace_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return list_favorite_pages(
+        db=db,
+        workspace_id=workspace_id,
+        user_id=current_user.id,
+    )
+
+
+@router.get(
+    "/workspace/{workspace_id}/search",
+    response_model=list[PageResponse],
+)
+def search_pages_route(
+    workspace_id: int,
+    q: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return search_workspace_pages(
+        db=db,
+        workspace_id=workspace_id,
+        user_id=current_user.id,
+        query=q,
     )
 
 
@@ -290,11 +251,11 @@ def get_page_versions_route(
     "/{page_id}/versions/{version_id}/restore",
     response_model=PageResponse,
 )
-def restore_page_version_route(
+def restore_version_route(
     page_id: int,
     version_id: int,
-    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     return restore_page_version(
         db=db,

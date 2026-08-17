@@ -1,17 +1,13 @@
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from fastapi import APIRouter
+from pydantic import BaseModel
 
-from app.database import get_db
-from app.models.user import User
-from app.schemas.ai import (
-    AIRequest,
-    AIResponse,
-    WorkspaceAIRequest,
+from app.services.ai_service import (
+    explain_content,
+    fix_grammar,
+    improve_writing,
+    rewrite_content,
+    summarize_content,
 )
-from app.services.ai_service import generate_response
-from app.services.auth_service import get_current_user
-from app.services.page_service import check_workspace_membership
-from app.services.workspace_ai_service import ask_workspace_ai
 
 
 router = APIRouter(
@@ -20,45 +16,69 @@ router = APIRouter(
 )
 
 
+class AIRequest(BaseModel):
+    content: str
+
+
+class AIResponse(BaseModel):
+    result: str
+
+
 @router.post(
-    "/generate",
+    "/summarize",
     response_model=AIResponse,
 )
-def generate(
-    data: AIRequest,
-    current_user: User = Depends(get_current_user),
-):
-    result = generate_response(
-        data.prompt
-    )
+def summarize(data: AIRequest):
+    result = summarize_content(data.content)
 
     return {
-        "response": result
+        "result": result,
     }
 
 
 @router.post(
-    "/workspace/{workspace_id}",
+    "/rewrite",
     response_model=AIResponse,
 )
-def workspace_ai(
-    workspace_id: int,
-    data: WorkspaceAIRequest,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    check_workspace_membership(
-        db=db,
-        workspace_id=workspace_id,
-        user_id=current_user.id,
-    )
-
-    result = ask_workspace_ai(
-        db=db,
-        workspace_id=workspace_id,
-        question=data.question,
-    )
+def rewrite(data: AIRequest):
+    result = rewrite_content(data.content)
 
     return {
-        "response": result
+        "result": result,
+    }
+
+
+@router.post(
+    "/improve",
+    response_model=AIResponse,
+)
+def improve(data: AIRequest):
+    result = improve_writing(data.content)
+
+    return {
+        "result": result,
+    }
+
+
+@router.post(
+    "/grammar",
+    response_model=AIResponse,
+)
+def grammar(data: AIRequest):
+    result = fix_grammar(data.content)
+
+    return {
+        "result": result,
+    }
+
+
+@router.post(
+    "/explain",
+    response_model=AIResponse,
+)
+def explain(data: AIRequest):
+    result = explain_content(data.content)
+
+    return {
+        "result": result,
     }

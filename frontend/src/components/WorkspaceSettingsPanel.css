@@ -1,0 +1,234 @@
+.workspace-settings-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 130;
+  width: 410px;
+  height: 100vh;
+  overflow-y: auto;
+  border-left: 1px solid #e5e7eb;
+  background: #ffffff;
+  box-shadow: -20px 0 60px rgba(15, 23, 42, 0.08);
+}
+
+.workspace-settings-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px;
+  border-bottom: 1px solid #e5e7eb;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(14px);
+}
+
+.workspace-settings-header span {
+  color: #6366f1;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.workspace-settings-header h2 {
+  margin: 5px 0 0;
+  color: #0f172a;
+  font-size: 21px;
+}
+
+.workspace-settings-header p {
+  margin: 7px 0 0;
+  color: #94a3b8;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.workspace-settings-header > button {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #64748b;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.workspace-settings-header > button:hover {
+  background: #f1f5f9;
+}
+
+.workspace-settings-body {
+  padding: 18px;
+}
+
+.workspace-settings-form {
+  padding: 15px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.workspace-setting-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.workspace-setting-field label {
+  color: #64748b;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.workspace-setting-field input,
+.workspace-setting-field textarea {
+  width: 100%;
+  padding: 10px 11px;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  background: #f8fafc;
+  color: #334155;
+  font: inherit;
+  font-size: 11px;
+  outline: none;
+}
+
+.workspace-setting-field textarea {
+  min-height: 100px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.workspace-setting-field input:focus,
+.workspace-setting-field textarea:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.08);
+}
+
+.workspace-settings-save {
+  width: 100%;
+  padding: 10px;
+  border: 0;
+  border-radius: 9px;
+  background: #111827;
+  color: #ffffff;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.workspace-settings-save:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.workspace-settings-meta {
+  margin-top: 18px;
+  padding: 15px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.workspace-settings-meta h3 {
+  margin: 0 0 12px;
+  color: #334155;
+  font-size: 12px;
+}
+
+.workspace-settings-meta > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 9px 0;
+  border-top: 1px solid #e5e7eb;
+}
+
+.workspace-settings-meta > div:first-of-type {
+  border-top: 0;
+}
+
+.workspace-settings-meta span {
+  color: #94a3b8;
+  font-size: 9px;
+}
+
+.workspace-settings-meta strong {
+  color: #475569;
+  font-size: 9px;
+}
+
+.workspace-danger-zone {
+  margin-top: 18px;
+  padding: 15px;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  background: #fffafa;
+}
+
+.workspace-danger-zone > span {
+  color: #dc2626;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.workspace-danger-zone h3 {
+  margin: 7px 0 0;
+  color: #991b1b;
+  font-size: 13px;
+}
+
+.workspace-danger-zone p {
+  margin: 7px 0 0;
+  color: #b91c1c;
+  font-size: 9px;
+  line-height: 1.6;
+}
+
+.workspace-danger-zone button {
+  width: 100%;
+  margin-top: 12px;
+  padding: 9px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #dc2626;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.workspace-danger-zone button:hover {
+  background: #fee2e2;
+}
+
+.workspace-danger-zone button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.workspace-settings-message {
+  padding: 30px 18px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 11px;
+  color: #94a3b8;
+  font-size: 10px;
+  text-align: center;
+}
+
+@media (max-width: 650px) {
+  .workspace-settings-panel {
+    width: 100%;
+  }
+}

@@ -1,7 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
 import { Link, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
+
 import { EditorContent, useEditor } from "@tiptap/react";
+
 import StarterKit from "@tiptap/starter-kit";
 
 import {
@@ -20,10 +23,14 @@ import {
 
 import { useAuth } from "../context/AuthContext";
 
+import usePageSocket from "../hooks/usePageSocket";
+
 import AIAssistant from "../components/AIAssistant";
+import AttachmentsPanel from "../components/AttachmentsPanel";
 import CommentsPanel from "../components/CommentsPanel";
 import InviteMembersModal from "../components/InviteMembersModal";
 import WorkspaceMembersPanel from "../components/WorkspaceMembersPanel";
+import WorkspaceSettingsPanel from "../components/WorkspaceSettingsPanel";
 
 import "./Workspace.css";
 
@@ -38,51 +45,228 @@ function Workspace() {
   const [selectedPage, setSelectedPage] = useState(null);
 
   const [title, setTitle] = useState("");
+
   const [search, setSearch] = useState("");
 
   const [loading, setLoading] = useState(true);
+
   const [creating, setCreating] = useState(false);
+
   const [saving, setSaving] = useState(false);
+
   const [loadingVersions, setLoadingVersions] = useState(false);
 
   const [showTrash, setShowTrash] = useState(false);
+
   const [showVersions, setShowVersions] = useState(false);
+
   const [showAI, setShowAI] = useState(false);
+
   const [showComments, setShowComments] = useState(false);
+
   const [showInviteModal, setShowInviteModal] = useState(false);
+
   const [showMembers, setShowMembers] = useState(false);
 
+  const [showAttachments, setShowAttachments] = useState(false);
+
+  const [showSettings, setShowSettings] = useState(false);
+
   const saveTimer = useRef(null);
+
+  const selectedPageRef = useRef(null);
+
+  const titleRef = useRef("");
+
+  const sendPageUpdateRef = useRef(() => {});
+
+  const sendTypingRef = useRef(() => {});
+
+  useEffect(() => {
+    selectedPageRef.current = selectedPage;
+  }, [selectedPage]);
+
+  useEffect(() => {
+    titleRef.current = title;
+  }, [title]);
 
   const closeSidePanels = () => {
     setShowAI(false);
     setShowComments(false);
     setShowInviteModal(false);
     setShowMembers(false);
+    setShowAttachments(false);
+    setShowSettings(false);
+  };
+
+  const scheduleAutoSave = (newTitle, newContent) => {
+    const currentPage = selectedPageRef.current;
+
+    if (!currentPage) {
+      return;
+    }
+
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current);
+    }
+
+    saveTimer.current = setTimeout(async () => {
+      setSaving(true);
+
+      try {
+        const updatedPage = await updatePage(currentPage.id, {
+          title: newTitle.trim() || "Untitled",
+
+          content: newContent,
+        });
+
+        setSelectedPage(updatedPage);
+
+        selectedPageRef.current = updatedPage;
+
+        setPages((current) =>
+          current.map((page) =>
+            page.id === updatedPage.id ? updatedPage : page,
+          ),
+        );
+      } catch (error) {
+        console.error("Auto-save error:", error);
+
+        toast.error(error.response?.data?.detail || "Auto-save failed");
+      } finally {
+        setSaving(false);
+      }
+    }, 900);
   };
 
   const editor = useEditor({
     extensions: [StarterKit],
+
     content: "",
 
-    onUpdate: ({ editor }) => {
-      if (!selectedPage) {
+    onUpdate: ({ editor: currentEditor }) => {
+      const currentPage = selectedPageRef.current;
+
+      if (!currentPage) {
         return;
       }
 
-      scheduleAutoSave(title, editor.getHTML());
+      const content = currentEditor.getHTML();
+
+      const currentTitle = titleRef.current;
+
+      scheduleAutoSave(currentTitle, content);
+
+      sendPageUpdateRef.current(currentTitle, content);
+
+      sendTypingRef.current();
     },
   });
 
+  const handleRemotePageUpdate = useCallback(
+    ({ title: remoteTitle, content: remoteContent }) => {
+      const currentPage = selectedPageRef.current;
+
+      if (!currentPage) {
+        return;
+      }
+
+      if (remoteTitle !== undefined && remoteTitle !== null) {
+        setTitle(remoteTitle);
+
+        titleRef.current = remoteTitle;
+
+        setSelectedPage((current) => {
+          if (!current) {
+            return current;
+          }
+
+          return {
+            ...current,
+            title: remoteTitle,
+          };
+        });
+
+        setPages((current) =>
+          current.map((page) =>
+            page.id === currentPage.id
+              ? {
+                  ...page,
+                  title: remoteTitle,
+                }
+              : page,
+          ),
+        );
+      }
+
+      if (
+        editor &&
+        remoteContent !== undefined &&
+        remoteContent !== null &&
+        editor.getHTML() !== remoteContent
+      ) {
+        editor.commands.setContent(remoteContent, false);
+
+        setSelectedPage((current) => {
+          if (!current) {
+            return current;
+          }
+
+          return {
+            ...current,
+            content: remoteContent,
+          };
+        });
+
+        setPages((current) =>
+          current.map((page) =>
+            page.id === currentPage.id
+              ? {
+                  ...page,
+                  content: remoteContent,
+                }
+              : page,
+          ),
+        );
+      }
+    },
+    [editor],
+  );
+
+  const { connected, onlineUsers, someoneTyping, sendPageUpdate, sendTyping } =
+    usePageSocket(selectedPage?.id, handleRemotePageUpdate);
+
+  useEffect(() => {
+    sendPageUpdateRef.current = sendPageUpdate;
+
+    sendTypingRef.current = sendTyping;
+  }, [sendPageUpdate, sendTyping]);
+
   useEffect(() => {
     const loadPages = async () => {
+      setLoading(true);
+
       try {
         const data = await getWorkspacePages(workspaceId);
 
         setPages(data);
 
         if (data.length > 0) {
-          await handleSelectPage(data[0]);
+          const firstPage = data[0];
+
+          const openedPage = await openPage(firstPage.id);
+
+          setSelectedPage(openedPage);
+
+          selectedPageRef.current = openedPage;
+
+          setTitle(openedPage.title);
+
+          titleRef.current = openedPage.title;
+
+          if (editor) {
+            editor.commands.setContent(openedPage.content || "", false);
+          }
         }
       } catch (error) {
         toast.error(error.response?.data?.detail || "Unable to load pages");
@@ -92,7 +276,7 @@ function Workspace() {
     };
 
     loadPages();
-  }, [workspaceId]);
+  }, [workspaceId, editor]);
 
   useEffect(() => {
     return () => {
@@ -112,41 +296,6 @@ function Workspace() {
     return pages.filter((page) => page.title.toLowerCase().includes(query));
   }, [pages, search]);
 
-  const scheduleAutoSave = (newTitle, newContent) => {
-    if (!selectedPage) {
-      return;
-    }
-
-    if (saveTimer.current) {
-      clearTimeout(saveTimer.current);
-    }
-
-    saveTimer.current = setTimeout(async () => {
-      setSaving(true);
-
-      try {
-        const updatedPage = await updatePage(selectedPage.id, {
-          title: newTitle.trim() || "Untitled",
-          content: newContent,
-        });
-
-        setSelectedPage(updatedPage);
-
-        setPages((current) =>
-          current.map((page) =>
-            page.id === updatedPage.id ? updatedPage : page,
-          ),
-        );
-      } catch (error) {
-        console.error(error);
-
-        toast.error(error.response?.data?.detail || "Auto-save failed");
-      } finally {
-        setSaving(false);
-      }
-    }, 900);
-  };
-
   const handleSelectPage = async (page) => {
     if (saveTimer.current) {
       clearTimeout(saveTimer.current);
@@ -157,7 +306,11 @@ function Workspace() {
 
       setSelectedPage(openedPage);
 
+      selectedPageRef.current = openedPage;
+
       setTitle(openedPage.title);
+
+      titleRef.current = openedPage.title;
 
       setShowTrash(false);
       setShowVersions(false);
@@ -169,7 +322,7 @@ function Workspace() {
       );
 
       if (editor) {
-        editor.commands.setContent(openedPage.content || "");
+        editor.commands.setContent(openedPage.content || "", false);
       }
     } catch (error) {
       toast.error(error.response?.data?.detail || "Unable to open page");
@@ -181,7 +334,15 @@ function Workspace() {
 
     setTitle(newTitle);
 
-    scheduleAutoSave(newTitle, editor?.getHTML() || "");
+    titleRef.current = newTitle;
+
+    const content = editor?.getHTML() || "";
+
+    scheduleAutoSave(newTitle, content);
+
+    sendPageUpdate(newTitle, content);
+
+    sendTyping();
   };
 
   const handleCreateRootPage = async () => {
@@ -235,7 +396,12 @@ function Workspace() {
       );
 
       setSelectedPage(null);
+
+      selectedPageRef.current = null;
+
       setTitle("");
+
+      titleRef.current = "";
 
       editor?.commands.clearContent();
 
@@ -254,7 +420,10 @@ function Workspace() {
       const data = await getTrash(workspaceId);
 
       setTrash(data);
+
       setSelectedPage(null);
+
+      selectedPageRef.current = null;
 
       setShowTrash(true);
       setShowVersions(false);
@@ -291,6 +460,8 @@ function Workspace() {
 
       setSelectedPage(updatedPage);
 
+      selectedPageRef.current = updatedPage;
+
       setPages((current) =>
         current.map((page) =>
           page.id === updatedPage.id ? updatedPage : page,
@@ -320,6 +491,7 @@ function Workspace() {
       setVersions(data);
 
       setShowVersions(true);
+
       setShowTrash(false);
 
       closeSidePanels();
@@ -342,13 +514,19 @@ function Workspace() {
 
       setSelectedPage(restored);
 
+      selectedPageRef.current = restored;
+
       setTitle(restored.title);
 
-      editor?.commands.setContent(restored.content || "");
+      titleRef.current = restored.title;
+
+      editor?.commands.setContent(restored.content || "", false);
 
       setPages((current) =>
         current.map((page) => (page.id === restored.id ? restored : page)),
       );
+
+      sendPageUpdate(restored.title, restored.content || "");
 
       toast.success("Previous version restored");
 
@@ -361,35 +539,33 @@ function Workspace() {
   };
 
   const handleOpenAI = () => {
-    setShowComments(false);
-    setShowInviteModal(false);
-    setShowMembers(false);
-
+    closeSidePanels();
     setShowAI(true);
   };
 
   const handleOpenComments = () => {
-    setShowAI(false);
-    setShowInviteModal(false);
-    setShowMembers(false);
-
+    closeSidePanels();
     setShowComments(true);
   };
 
   const handleOpenShare = () => {
-    setShowAI(false);
-    setShowComments(false);
-    setShowMembers(false);
-
+    closeSidePanels();
     setShowInviteModal(true);
   };
 
   const handleOpenMembers = () => {
-    setShowAI(false);
-    setShowComments(false);
-    setShowInviteModal(false);
-
+    closeSidePanels();
     setShowMembers(true);
+  };
+
+  const handleOpenAttachments = () => {
+    closeSidePanels();
+    setShowAttachments(true);
+  };
+
+  const handleOpenSettings = () => {
+    closeSidePanels();
+    setShowSettings(true);
   };
 
   const renderPageTree = (parentId = null, level = 0) => {
@@ -509,7 +685,11 @@ function Workspace() {
             Members
           </button>
 
-          <button type="button" className="sidebar-footer-button">
+          <button
+            type="button"
+            className="sidebar-footer-button"
+            onClick={handleOpenSettings}
+          >
             <span>⚙</span>
             Workspace settings
           </button>
@@ -535,6 +715,24 @@ function Workspace() {
           <div className="workspace-actions">
             {!showTrash && selectedPage && (
               <>
+                <div className="realtime-status">
+                  <span
+                    className={
+                      connected ? "realtime-dot connected" : "realtime-dot"
+                    }
+                  />
+
+                  <span>{connected ? "Live" : "Offline"}</span>
+
+                  {connected && (
+                    <span className="online-users">{onlineUsers} online</span>
+                  )}
+
+                  {someoneTyping && (
+                    <span className="typing-status">Someone is typing...</span>
+                  )}
+                </div>
+
                 <span
                   className={
                     saving ? "save-indicator saving" : "save-indicator"
@@ -553,11 +751,6 @@ function Workspace() {
                       : "favorite-button"
                   }
                   onClick={handleToggleFavorite}
-                  title={
-                    selectedPage.is_favorite
-                      ? "Remove from favorites"
-                      : "Add to favorites"
-                  }
                 >
                   {selectedPage.is_favorite ? "★" : "☆"}
                 </button>
@@ -576,6 +769,14 @@ function Workspace() {
                   onClick={handleOpenComments}
                 >
                   Comments
+                </button>
+
+                <button
+                  type="button"
+                  className="workspace-secondary-button"
+                  onClick={handleOpenAttachments}
+                >
+                  Attachments
                 </button>
 
                 <button
@@ -713,8 +914,7 @@ function Workspace() {
             <h1>Start building your knowledge base</h1>
 
             <p>
-              Create a page and begin organizing notes, documentation, and
-              ideas.
+              Create a page and begin organizing notes, documentation and ideas.
             </p>
 
             <button type="button" onClick={handleCreateRootPage}>
@@ -744,6 +944,14 @@ function Workspace() {
                 <span>•</span>
 
                 <span>Auto-save enabled</span>
+
+                {connected && (
+                  <>
+                    <span>•</span>
+
+                    <span>Live collaboration</span>
+                  </>
+                )}
 
                 {selectedPage.is_favorite && (
                   <>
@@ -899,6 +1107,18 @@ function Workspace() {
         onClose={() => setShowMembers(false)}
         workspaceId={workspaceId}
         currentUserId={user?.id}
+      />
+
+      <AttachmentsPanel
+        open={showAttachments}
+        onClose={() => setShowAttachments(false)}
+        pageId={selectedPage?.id}
+      />
+
+      <WorkspaceSettingsPanel
+        open={showSettings}
+        onClose={() => setShowSettings(false)}
+        workspaceId={workspaceId}
       />
     </div>
   );
